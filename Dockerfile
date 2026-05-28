@@ -10,7 +10,8 @@ ARG DOCMOST_MCP_REF=107b06bed2d1e6808346a093f2fa48a529348e9a
 RUN git clone https://github.com/aleksvin8888/local-docmost-mcp.git src \
     && cd src && git checkout ${DOCMOST_MCP_REF}
 
-RUN pip install --no-cache-dir -r src/requirements.txt mcp-proxy
+RUN pip install --no-cache-dir -r src/requirements.txt mcp-proxy==0.12.0 \
+    fastapi httpx
 
 # Persist config.json and token.json on a mounted volume.
 # Upstream loads both from Path(__file__).parent (no env override),
@@ -18,6 +19,7 @@ RUN pip install --no-cache-dir -r src/requirements.txt mcp-proxy
 RUN ln -s /data/config.json /app/src/config.json \
     && ln -s /data/token.json /app/src/token.json
 
+COPY ui /app/ui
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

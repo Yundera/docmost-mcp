@@ -18,10 +18,13 @@ RUN pip install --no-cache-dir -r src/requirements.txt mcp-proxy
 RUN ln -s /data/config.json /app/src/config.json \
     && ln -s /data/token.json /app/src/token.json
 
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 ENV PORT=8000
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD curl -fsS http://127.0.0.1:${PORT}/sse -o /dev/null || exit 1
 
-CMD ["sh", "-c", "touch /data/token.json && exec mcp-proxy --port=${PORT} --host=0.0.0.0 -- python /app/src/mcp_server.py"]
+CMD ["/entrypoint.sh"]

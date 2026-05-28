@@ -195,11 +195,14 @@
     <h2>Connect an MCP client</h2>
     <p class="lead">Copy one of these URLs into Claude Desktop, Cursor, VS Code, or any MCP-compatible client.</p>
 
-    <div class="url-label">Public URL (use the bearer token your hash-lock proxy is configured with)</div>
+    <div class="url-label">Public URL (drop into any MCP client; the <code>?hash=…</code> token authenticates the client)</div>
     <div class="url-block">
       <code id="public-url">https://&lt;your-domain&gt;/mcp</code>
       <button class="secondary" onclick="copy('public-url')">Copy</button>
     </div>
+    <p id="hash-warning" class="hint" style="display:none; color: var(--warn);">
+      Tip: open this page from the CasaOS app card (or with <code>?hash=&lt;your-auth-hash&gt;</code> in the URL) to get a ready-to-paste authenticated URL above.
+    </p>
 
     <div class="url-label">Internal Docker URL (no auth, only for containers on the <code>pcs</code> network)</div>
     <div class="url-block">
@@ -278,8 +281,17 @@ async function loadStatus() {
     setStatus("err", "UI cannot reach backend");
   }
 
-  // Update public URL based on current origin
-  $("public-url").textContent = window.location.origin + "/mcp";
+  // Build the public URL. If the user landed here with ?hash=... (the
+  // hash-lock proxy's query-string auth token) we bake it into the
+  // copyable URL so they can paste it straight into an MCP client.
+  const params = new URLSearchParams(window.location.search);
+  const hash = params.get("hash");
+  let url = window.location.origin + "/mcp";
+  if (hash) url += "?hash=" + encodeURIComponent(hash);
+  $("public-url").textContent = url;
+  if (!hash) {
+    document.getElementById("hash-warning").style.display = "block";
+  }
 }
 
 async function loadConfig() {

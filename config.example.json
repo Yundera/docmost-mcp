@@ -1,0 +1,10 @@
+{
+  "base_url": "http://docmost",
+  "email": "your-email@example.com",
+  "password": "your-password",
+  "timeout": 30,
+  "page_content_format": "markdown",
+  "create_space_conflict_policy": "return_existing",
+  "duplicate_page_conflict_policy": "auto_suffix",
+  "clear_parent_on_space_move": true
+}

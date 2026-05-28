@@ -1,0 +1,144 @@
+name: docmost-mcp
+services:
+    docmost-mcp:
+        container_name: docmost-mcp
+        cpu_shares: 50
+        deploy:
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: "536870912"
+                reservations:
+                    memory: "134217728"
+        environment:
+            PORT: "8000"
+        expose:
+            - "8000"
+        hostname: docmost-mcp
+        image: ghcr.io/yundera/docmost-mcp:latest
+        labels:
+            icon: https://cdn.jsdelivr.net/gh/Yundera/AppStore@main/Apps/Docmost/icon.png
+        networks:
+            pcs: {}
+        restart: unless-stopped
+        user: "0:0"
+        volumes:
+            - type: bind
+              source: /DATA/AppData/docmost-mcp/
+              target: /data
+              bind:
+                create_host_path: true
+    docmost-mcp-proxy:
+        cpu_shares: 50
+        depends_on:
+            docmost-mcp:
+                condition: service_started
+                required: true
+        environment:
+            ALLOWED_PATHS: mcp,sse,messages
+            AUTH_HASH: ${AUTH_HASH}
+            BACKEND_HOST: docmost-mcp
+            BACKEND_PORT: "8000"
+            LISTEN_PORT: "80"
+            PASSWORD: ${default_pwd}
+            USER: ADMIN
+        expose:
+            - "80"
+        image: ghcr.io/yundera/nginx-hash-lock:1.0.5
+        labels:
+            caddy_0: docmostmcp-${domain}
+            caddy_0.import: gateway_tls
+            caddy_0.reverse_proxy: '{{upstreams 80}}'
+            icon: https://cdn.jsdelivr.net/gh/Yundera/AppStore@main/Apps/Docmost/icon.png
+        networks:
+            pcs: null
+        restart: unless-stopped
+        user: root
+networks:
+    default:
+        name: docmost-mcp_default
+    pcs:
+        name: pcs
+        external: true
+x-casaos:
+    architectures:
+        - amd64
+        - arm64
+    author: Yundera
+    category: Developer
+    chips:
+        - key: mcp
+          name:
+            en_us: MCP
+    description:
+        en_us: |
+            **Docmost knowledge base control for AI assistants via MCP**
+
+            Docmost MCP exposes the [Docmost](https://docmost.com) REST API as an MCP (Model Context Protocol) server, letting LLMs and AI assistants list and search spaces, read pages, create and update content, move and duplicate pages, and manage comments — all against your self-hosted Docmost instance.
+
+            Wraps the community [`aleksvin8888/local-docmost-mcp`](https://github.com/aleksvin8888/local-docmost-mcp) Python server with a streamable-HTTP transport shim so any MCP-compatible client can connect (Claude Desktop, Claude Code, Cursor, VS Code, etc.).
+
+            **Available MCP Tools:**
+            | Tool | Description |
+            |------|-------------|
+            | `list_spaces` | List all workspace spaces |
+            | `search_docs` | Full-text search across pages |
+            | `get_page` | Read page content as Markdown |
+            | `create_space` | Create a new space |
+            | `create_page` | Create a new page from Markdown |
+            | `update_page` | Update title/content (replace/append/prepend) |
+            | `duplicate_page` | Duplicate a page (recursive) |
+            | `move_page` | Move a page within the hierarchy |
+            | `move_page_to_space` | Move a page across spaces |
+            | `create_comment` | Add a comment to a page |
+            | `resolve_comment` | Resolve a comment with a note |
+    developer: Yundera
+    hostname: docmostmcp-${domain}
+    icon: https://cdn.jsdelivr.net/gh/Yundera/AppStore@main/Apps/Docmost/icon.png
+    is_uncontrolled: false
+    main: docmost-mcp-proxy
+    port_map: "443"
+    scheme: https
+    tagline:
+        en_us: MCP server for Docmost — read, write, search, move pages
+    tips:
+        before_install:
+            en_us: |
+                **Configuration required after install**
+
+                Edit `/DATA/AppData/docmost-mcp/config.json` with your Docmost account credentials:
+                - `base_url`: keep as `http://docmost` (internal Docker hostname)
+                - `email` / `password`: your Docmost login credentials
+
+                The MCP authenticates against Docmost on first use and caches a JWT in `/DATA/AppData/docmost-mcp/token.json`.
+
+                **Security note:** the account used here has access to whatever spaces it can see in Docmost. For least-privilege, create a dedicated service user in Docmost rather than reusing your admin account.
+
+                **Connecting an MCP client:**
+
+                Public URL (with bearer auth):
+                ```json
+                {
+                  "mcpServers": {
+                    "docmost-mcp": {
+                      "type": "http",
+                      "url": "https://docmostmcp-<your-domain>/mcp",
+                      "headers": { "Authorization": "Bearer <YOUR_BEARER_TOKEN>" }
+                    }
+                  }
+                }
+                ```
+
+                Local Docker network (no auth, for containers on the `pcs` network):
+                ```json
+                {
+                  "mcpServers": {
+                    "docmost-mcp": {
+                      "type": "http",
+                      "url": "http://docmost-mcp:8000/mcp"
+                    }
+                  }
+                }
+                ```
+    title:
+        en_us: Docmost MCP

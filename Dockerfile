@@ -27,6 +27,6 @@ ENV PORT=8000
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:${PORT}/sse -o /dev/null || exit 1
+  CMD curl -fsS http://127.0.0.1:${PORT}/healthz -o /dev/null || exit 1
 
 CMD ["/entrypoint.sh"]

@@ -1,0 +1,4 @@
+# Normalize line endings: store text files with LF in the repo,
+# check out with the platform's native endings. Prevents CRLF/LF
+# churn from showing every file as modified.
+* text=auto

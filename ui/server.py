@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 
 CONFIG_PATH = Path("/data/config.json")
 TOKEN_PATH = Path("/data/token.json")
@@ -69,6 +70,14 @@ async def index() -> HTMLResponse:
 @app.get("/favicon.ico")
 async def favicon():
     return JSONResponse(status_code=204, content=None)
+
+
+@app.get("/healthz")
+async def healthz():
+    # Cheap liveness probe for the Docker HEALTHCHECK. Deliberately does NOT
+    # touch the streaming `/sse` proxy or the upstream mcp-proxy — probing a
+    # long-lived SSE stream leaks a connection per check (see _proxy below).
+    return JSONResponse({"status": "ok"})
 
 
 # ---------- config API ----------
@@ -212,19 +221,22 @@ async def _proxy(request: Request) -> StreamingResponse:
     )
     upstream = await client.send(req, stream=True)
 
-    async def stream():
-        try:
-            async for chunk in upstream.aiter_raw():
-                yield chunk
-        finally:
-            await upstream.aclose()
-            await client.aclose()
+    async def cleanup() -> None:
+        # Runs as a Starlette BackgroundTask AFTER the response lifecycle, in a
+        # fresh task. Closing in the streaming generator's `finally` instead is
+        # unsafe: when the client disconnects mid-stream (e.g. a healthcheck on
+        # `/sse` that times out), the streaming task is cancelled and the
+        # `await aclose()` in its finally is cancelled too — leaking the upstream
+        # socket FD every time. BackgroundTask is not subject to that cancellation.
+        await upstream.aclose()
+        await client.aclose()
 
     return StreamingResponse(
-        stream(),
+        upstream.aiter_raw(),
         status_code=upstream.status_code,
         headers=_filter_headers(dict(upstream.headers)),
         media_type=upstream.headers.get("content-type"),
+        background=BackgroundTask(cleanup),
     )
 
 

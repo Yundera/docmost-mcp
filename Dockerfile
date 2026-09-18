@@ -10,8 +10,8 @@ ARG DOCMOST_MCP_REF=107b06bed2d1e6808346a093f2fa48a529348e9a
 RUN git clone https://github.com/aleksvin8888/local-docmost-mcp.git src \
     && cd src && git checkout ${DOCMOST_MCP_REF}
 
-RUN pip install --no-cache-dir -r src/requirements.txt mcp-proxy==0.12.0 \
-    fastapi httpx
+RUN pip install --no-cache-dir -r src/requirements.txt "mcp>=1.17.0,<2" \
+    mcp-proxy==0.12.0 fastapi httpx
 
 # Persist config.json and token.json on a mounted volume.
 # Upstream loads both from Path(__file__).parent (no env override),
